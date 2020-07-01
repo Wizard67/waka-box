@@ -26,7 +26,18 @@ async function updateGist(stats) {
   }
 
   const lines = [];
-  for (let i = 0; i < Math.min(stats.data.languages.length, 5); i++) {
+
+  const { percent, currentYear } = getDateInfo(new Date());
+
+  lines.push(
+    ["🕓", currentYear, generateBarChart(percent, 28), currentYear + 1].join(
+      " "
+    )
+  );
+
+  lines.push("");
+
+  for (let i = 0; i < Math.min(stats.data.languages.length, 3); i++) {
     const data = stats.data.languages[i];
     const { name, percent, text: time } = data;
 
@@ -39,8 +50,6 @@ async function updateGist(stats) {
 
     lines.push(line.join(" "));
   }
-
-  if (lines.length == 0) return;
 
   try {
     // Get original filename to update that same file
@@ -57,6 +66,30 @@ async function updateGist(stats) {
   } catch (error) {
     console.error(`Unable to update gist\n${error}`);
   }
+}
+
+function getDateInfo(date) {
+  const currentYear = date.getFullYear();
+  const currentMonth = date.getMonth();
+
+  let percent = "";
+  let totalDay = 0;
+  let passDay = 0;
+
+  for (let i = 0; i < 12; i++) {
+    totalDay += new Date(currentYear, i + 1, 0).getDate();
+    if (i < currentMonth) {
+      passDay += new Date(currentYear, i + 1, 0).getDate();
+    } else if (i === currentMonth) {
+      passDay += new Date(date).getDate();
+    }
+  }
+
+  passDay--;
+
+  percent = ((passDay / totalDay) * 100).toFixed(2);
+
+  return { passDay, totalDay, percent, currentYear };
 }
 
 function generateBarChart(percent, size) {
