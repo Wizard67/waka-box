@@ -574,8 +574,16 @@ module.exports = (function(e, t) {
         (!e || e === n.release()) &&
         ["6.1", "6.2", "6.3", "10.0"].includes(r)
       ) {
-        const e = i.sync("wmic", ["os", "get", "Caption"]).stdout || "";
-        const t = (e.match(/2008|2012|2016/) || [])[0];
+        let e;
+        try {
+          e = i.sync("wmic", ["os", "get", "Caption"]).stdout || "";
+        } catch (t) {
+          e =
+            i.sync("powershell", [
+              "(Get-CimInstance -ClassName Win32_OperatingSystem).caption"
+            ]).stdout || "";
+        }
+        const t = (e.match(/2008|2012|2016|2019/) || [])[0];
         if (t) {
           return `Server ${t}`;
         }
@@ -855,7 +863,10 @@ module.exports = (function(e, t) {
         console.error(`Unable to get gist\n${e}`);
       }
       const r = [];
-      for (let t = 0; t < Math.min(e.data.languages.length, 5); t++) {
+      const { percent: n, currentYear: i } = getDateInfo(new Date());
+      r.push(["🕓", generateBarChart(n, 22), i + 1].join(" "));
+      r.push("");
+      for (let t = 0; t < Math.min(e.data.languages.length, 3); t++) {
         const n = e.data.languages[t];
         const { name: i, percent: s, text: o } = n;
         const a = [
@@ -880,6 +891,24 @@ module.exports = (function(e, t) {
       } catch (e) {
         console.error(`Unable to update gist\n${e}`);
       }
+    }
+    function getDateInfo(e) {
+      const t = e.getFullYear();
+      const r = e.getMonth();
+      let n = "";
+      let i = 0;
+      let s = 0;
+      for (let n = 0; n < 12; n++) {
+        i += new Date(t, n + 1, 0).getDate();
+        if (n < r) {
+          s += new Date(t, n + 1, 0).getDate();
+        } else if (n === r) {
+          s += new Date(e).getDate();
+        }
+      }
+      s--;
+      n = ((s / i) * 100).toFixed(2);
+      return { passDay: s, totalDay: i, percent: n, currentYear: t };
     }
     function generateBarChart(e, t) {
       const r = "░▏▎▍▌▋▊▉█";
@@ -1525,39 +1554,19 @@ module.exports = (function(e, t) {
   },
   215: function(e) {
     e.exports = {
-      _from: "@octokit/rest@16.36.0",
-      _id: "@octokit/rest@16.36.0",
-      _inBundle: false,
-      _integrity:
-        "sha512-zoZj7Ya4vWBK4fjTwK2Cnmu7XBB1p9ygSvTk2TthN6DVJXM4hQZQoAiknWFLJWSTix4dnA3vuHtjPZbExYoCZA==",
-      _location: "/@octokit/rest",
-      _phantomChildren: {},
-      _requested: {
-        type: "version",
-        registry: true,
-        raw: "@octokit/rest@16.36.0",
-        name: "@octokit/rest",
-        escapedName: "@octokit%2frest",
-        scope: "@octokit",
-        rawSpec: "16.36.0",
-        saveSpec: null,
-        fetchSpec: "16.36.0"
-      },
-      _requiredBy: ["/"],
-      _resolved: "https://registry.npmjs.org/@octokit/rest/-/rest-16.36.0.tgz",
-      _shasum: "99892c57ba632c2a7b21845584004387b56c2cb7",
-      _spec: "@octokit/rest@16.36.0",
-      _where: "/Users/soramorimoto/src/github.com/matchai/waka-box",
-      author: { name: "Gregor Martynus", url: "https://github.com/gr2m" },
-      bugs: { url: "https://github.com/octokit/rest.js/issues" },
-      bundleDependencies: false,
-      bundlesize: [{ path: "./dist/octokit-rest.min.js.gz", maxSize: "33 kB" }],
+      name: "@octokit/rest",
+      version: "16.36.0",
+      publishConfig: { access: "public" },
+      description: "GitHub REST API client for Node.js",
+      keywords: ["octokit", "github", "rest", "api-client"],
+      author: "Gregor Martynus (https://github.com/gr2m)",
       contributors: [
         { name: "Mike de Boer", email: "info@mikedeboer.nl" },
         { name: "Fabian Jakobs", email: "fabian@c9.io" },
         { name: "Joe Gallo", email: "joe@brassafrax.com" },
         { name: "Gregor Martynus", url: "https://github.com/gr2m" }
       ],
+      repository: "https://github.com/octokit/rest.js",
       dependencies: {
         "@octokit/request": "^5.2.0",
         "@octokit/request-error": "^1.0.2",
@@ -1572,8 +1581,6 @@ module.exports = (function(e, t) {
         once: "^1.4.0",
         "universal-user-agent": "^4.0.0"
       },
-      deprecated: false,
-      description: "GitHub REST API client for Node.js",
       devDependencies: {
         "@gimenete/type-writer": "^0.1.3",
         "@octokit/fixtures-server": "^5.0.6",
@@ -1607,13 +1614,41 @@ module.exports = (function(e, t) {
         "webpack-bundle-analyzer": "^3.0.0",
         "webpack-cli": "^3.0.0"
       },
-      files: ["index.js", "index.d.ts", "lib", "plugins"],
-      homepage: "https://github.com/octokit/rest.js#readme",
-      keywords: ["octokit", "github", "rest", "api-client"],
+      types: "index.d.ts",
+      scripts: {
+        coverage: "nyc report --reporter=html && open coverage/index.html",
+        lint:
+          "prettier --check '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json",
+        "lint:fix":
+          "prettier --write '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json",
+        pretest: "npm run -s lint",
+        test: 'nyc mocha test/mocha-node-setup.js "test/*/**/*-test.js"',
+        "test:browser": "cypress run --browser chrome",
+        build: "npm-run-all build:*",
+        "build:ts": "npm run -s update-endpoints:typescript",
+        "prebuild:browser": "mkdirp dist/",
+        "build:browser": "npm-run-all build:browser:*",
+        "build:browser:development":
+          "webpack --mode development --entry . --output-library=Octokit --output=./dist/octokit-rest.js --profile --json > dist/bundle-stats.json",
+        "build:browser:production":
+          "webpack --mode production --entry . --plugin=compression-webpack-plugin --output-library=Octokit --output-path=./dist --output-filename=octokit-rest.min.js --devtool source-map",
+        "generate-bundle-report":
+          "webpack-bundle-analyzer dist/bundle-stats.json --mode=static --no-open --report dist/bundle-report.html",
+        "update-endpoints": "npm-run-all update-endpoints:*",
+        "update-endpoints:fetch-json":
+          "node scripts/update-endpoints/fetch-json",
+        "update-endpoints:code": "node scripts/update-endpoints/code",
+        "update-endpoints:typescript":
+          "node scripts/update-endpoints/typescript",
+        "prevalidate:ts": "npm run -s build:ts",
+        "validate:ts": "tsc --target es6 --noImplicitAny index.d.ts",
+        "postvalidate:ts":
+          "tsc --noEmit --target es6 test/typescript-validate.ts",
+        "start-fixtures-server": "octokit-fixtures-server"
+      },
       license: "MIT",
-      name: "@octokit/rest",
+      files: ["index.js", "index.d.ts", "lib", "plugins"],
       nyc: { ignore: ["test"] },
-      publishConfig: { access: "public" },
       release: {
         publish: [
           "@semantic-release/npm",
@@ -1623,43 +1658,7 @@ module.exports = (function(e, t) {
           }
         ]
       },
-      repository: {
-        type: "git",
-        url: "git+https://github.com/octokit/rest.js.git"
-      },
-      scripts: {
-        build: "npm-run-all build:*",
-        "build:browser": "npm-run-all build:browser:*",
-        "build:browser:development":
-          "webpack --mode development --entry . --output-library=Octokit --output=./dist/octokit-rest.js --profile --json > dist/bundle-stats.json",
-        "build:browser:production":
-          "webpack --mode production --entry . --plugin=compression-webpack-plugin --output-library=Octokit --output-path=./dist --output-filename=octokit-rest.min.js --devtool source-map",
-        "build:ts": "npm run -s update-endpoints:typescript",
-        coverage: "nyc report --reporter=html && open coverage/index.html",
-        "generate-bundle-report":
-          "webpack-bundle-analyzer dist/bundle-stats.json --mode=static --no-open --report dist/bundle-report.html",
-        lint:
-          "prettier --check '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json",
-        "lint:fix":
-          "prettier --write '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json",
-        "postvalidate:ts":
-          "tsc --noEmit --target es6 test/typescript-validate.ts",
-        "prebuild:browser": "mkdirp dist/",
-        pretest: "npm run -s lint",
-        "prevalidate:ts": "npm run -s build:ts",
-        "start-fixtures-server": "octokit-fixtures-server",
-        test: 'nyc mocha test/mocha-node-setup.js "test/*/**/*-test.js"',
-        "test:browser": "cypress run --browser chrome",
-        "update-endpoints": "npm-run-all update-endpoints:*",
-        "update-endpoints:code": "node scripts/update-endpoints/code",
-        "update-endpoints:fetch-json":
-          "node scripts/update-endpoints/fetch-json",
-        "update-endpoints:typescript":
-          "node scripts/update-endpoints/typescript",
-        "validate:ts": "tsc --target es6 --noImplicitAny index.d.ts"
-      },
-      types: "index.d.ts",
-      version: "16.36.0"
+      bundlesize: [{ path: "./dist/octokit-rest.min.js.gz", maxSize: "33 kB" }]
     };
   },
   219: function(e, t, r) {
@@ -1897,24 +1896,70 @@ module.exports = (function(e, t) {
       e.registerEndpoints = n.bind(null, e);
     }
   },
+  257: function(e, t, r) {
+    "use strict";
+    Object.defineProperty(t, "__esModule", { value: true });
+    function _interopDefault(e) {
+      return e && typeof e === "object" && "default" in e ? e["default"] : e;
+    }
+    var n = r(692);
+    var i = _interopDefault(r(969));
+    const s = i(e => console.warn(e));
+    class RequestError extends Error {
+      constructor(e, t, r) {
+        super(e);
+        if (Error.captureStackTrace) {
+          Error.captureStackTrace(this, this.constructor);
+        }
+        this.name = "HttpError";
+        this.status = t;
+        Object.defineProperty(this, "code", {
+          get() {
+            s(
+              new n.Deprecation(
+                "[@octokit/request-error] `error.code` is deprecated, use `error.status`."
+              )
+            );
+            return t;
+          }
+        });
+        this.headers = r.headers || {};
+        const i = Object.assign({}, r.request);
+        if (r.request.headers.authorization) {
+          i.headers = Object.assign({}, r.request.headers, {
+            authorization: r.request.headers.authorization.replace(
+              / .*$/,
+              " [REDACTED]"
+            )
+          });
+        }
+        i.url = i.url
+          .replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]")
+          .replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
+        this.request = i;
+      }
+    }
+    t.RequestError = RequestError;
+  },
   260: function(e, t, r) {
     var n = r(357);
     var i = r(654);
-    var s = r(614);
-    if (typeof s !== "function") {
-      s = s.EventEmitter;
+    var s = /^win/i.test(process.platform);
+    var o = r(614);
+    if (typeof o !== "function") {
+      o = o.EventEmitter;
     }
-    var o;
+    var a;
     if (process.__signal_exit_emitter__) {
-      o = process.__signal_exit_emitter__;
+      a = process.__signal_exit_emitter__;
     } else {
-      o = process.__signal_exit_emitter__ = new s();
-      o.count = 0;
-      o.emitted = {};
+      a = process.__signal_exit_emitter__ = new o();
+      a.count = 0;
+      a.emitted = {};
     }
-    if (!o.infinite) {
-      o.setMaxListeners(Infinity);
-      o.infinite = true;
+    if (!a.infinite) {
+      a.setMaxListeners(Infinity);
+      a.infinite = true;
     }
     e.exports = function(e, t) {
       n.equal(
@@ -1922,7 +1967,7 @@ module.exports = (function(e, t) {
         "function",
         "a callback must be provided for exit handler"
       );
-      if (u === false) {
+      if (p === false) {
         load();
       }
       var r = "exit";
@@ -1930,47 +1975,50 @@ module.exports = (function(e, t) {
         r = "afterexit";
       }
       var i = function() {
-        o.removeListener(r, e);
+        a.removeListener(r, e);
         if (
-          o.listeners("exit").length === 0 &&
-          o.listeners("afterexit").length === 0
+          a.listeners("exit").length === 0 &&
+          a.listeners("afterexit").length === 0
         ) {
           unload();
         }
       };
-      o.on(r, e);
+      a.on(r, e);
       return i;
     };
     e.exports.unload = unload;
     function unload() {
-      if (!u) {
+      if (!p) {
         return;
       }
-      u = false;
+      p = false;
       i.forEach(function(e) {
         try {
-          process.removeListener(e, a[e]);
+          process.removeListener(e, u[e]);
         } catch (e) {}
       });
-      process.emit = c;
-      process.reallyExit = p;
-      o.count -= 1;
+      process.emit = d;
+      process.reallyExit = c;
+      a.count -= 1;
     }
     function emit(e, t, r) {
-      if (o.emitted[e]) {
+      if (a.emitted[e]) {
         return;
       }
-      o.emitted[e] = true;
-      o.emit(e, t, r);
+      a.emitted[e] = true;
+      a.emit(e, t, r);
     }
-    var a = {};
+    var u = {};
     i.forEach(function(e) {
-      a[e] = function listener() {
+      u[e] = function listener() {
         var t = process.listeners(e);
-        if (t.length === o.count) {
+        if (t.length === a.count) {
           unload();
           emit("exit", null, e);
           emit("afterexit", null, e);
+          if (s && e === "SIGHUP") {
+            e = "SIGINT";
+          }
           process.kill(process.pid, e);
         }
       };
@@ -1979,16 +2027,16 @@ module.exports = (function(e, t) {
       return i;
     };
     e.exports.load = load;
-    var u = false;
+    var p = false;
     function load() {
-      if (u) {
+      if (p) {
         return;
       }
-      u = true;
-      o.count += 1;
+      p = true;
+      a.count += 1;
       i = i.filter(function(e) {
         try {
-          process.on(e, a[e]);
+          process.on(e, u[e]);
           return true;
         } catch (e) {
           return false;
@@ -1997,25 +2045,25 @@ module.exports = (function(e, t) {
       process.emit = processEmit;
       process.reallyExit = processReallyExit;
     }
-    var p = process.reallyExit;
+    var c = process.reallyExit;
     function processReallyExit(e) {
       process.exitCode = e || 0;
       emit("exit", process.exitCode, null);
       emit("afterexit", process.exitCode, null);
-      p.call(process, process.exitCode);
+      c.call(process, process.exitCode);
     }
-    var c = process.emit;
+    var d = process.emit;
     function processEmit(e, t) {
       if (e === "exit") {
         if (t !== undefined) {
           process.exitCode = t;
         }
-        var r = c.apply(this, arguments);
+        var r = d.apply(this, arguments);
         emit("exit", process.exitCode, null);
         emit("afterexit", process.exitCode, null);
         return r;
       } else {
-        return c.apply(this, arguments);
+        return d.apply(this, arguments);
       }
     }
   },
@@ -2169,18 +2217,18 @@ module.exports = (function(e, t) {
     var G = "$1~";
     var F = u++;
     a[F] = "^" + a[A] + a[S] + "$";
-    var B = u++;
-    a[B] = "^" + a[A] + a[x] + "$";
     var D = u++;
-    a[D] = "(?:\\^)";
+    a[D] = "^" + a[A] + a[x] + "$";
+    var B = u++;
+    a[B] = "(?:\\^)";
     var L = u++;
-    a[L] = "(\\s*)" + a[D] + "\\s+";
+    a[L] = "(\\s*)" + a[B] + "\\s+";
     o[L] = new RegExp(a[L], "g");
     var U = "$1^";
     var I = u++;
-    a[I] = "^" + a[D] + a[S] + "$";
+    a[I] = "^" + a[B] + a[S] + "$";
     var $ = u++;
-    a[$] = "^" + a[D] + a[x] + "$";
+    a[$] = "^" + a[B] + a[x] + "$";
     var H = u++;
     a[H] = "^" + a[T] + "\\s*(" + v + ")$|^$";
     var z = u++;
@@ -2789,7 +2837,7 @@ module.exports = (function(e, t) {
         .join(" ");
     }
     function replaceTilde(e, t) {
-      var n = t.loose ? o[B] : o[F];
+      var n = t.loose ? o[D] : o[F];
       return e.replace(n, function(t, n, i, s, o) {
         r("tilde", e, t, n, i, s, o);
         var a;
@@ -3302,7 +3350,7 @@ module.exports = (function(e, t) {
   294: function(e, t, r) {
     e.exports = parseOptions;
     const { Deprecation: n } = r(692);
-    const { getUserAgent: i } = r(796);
+    const { getUserAgent: i } = r(619);
     const s = r(969);
     const o = r(215);
     const a = s((e, t) => e.warn(t));
@@ -3676,36 +3724,29 @@ module.exports = (function(e, t) {
   },
   361: function(e) {
     e.exports = {
-      _from: "axios@0.19.0",
-      _id: "axios@0.19.0",
-      _inBundle: false,
-      _integrity:
-        "sha512-1uvKqKQta3KBxIz14F2v06AEHZ/dIoeKfbTRkK1E5oqjDnuEerLmYTgJB5AiQZHJcljpg1TuRzdjDR06qNk0DQ==",
-      _location: "/axios",
-      _phantomChildren: {},
-      _requested: {
-        type: "version",
-        registry: true,
-        raw: "axios@0.19.0",
-        name: "axios",
-        escapedName: "axios",
-        rawSpec: "0.19.0",
-        saveSpec: null,
-        fetchSpec: "0.19.0"
-      },
-      _requiredBy: ["/"],
-      _resolved: "https://registry.npmjs.org/axios/-/axios-0.19.0.tgz",
-      _shasum: "8e09bff3d9122e133f7b8101c8fbdd00ed3d2ab8",
-      _spec: "axios@0.19.0",
-      _where: "/Users/soramorimoto/src/github.com/matchai/waka-box",
-      author: { name: "Matt Zabriskie" },
-      browser: { "./lib/adapters/http.js": "./lib/adapters/xhr.js" },
-      bugs: { url: "https://github.com/axios/axios/issues" },
-      bundleDependencies: false,
-      bundlesize: [{ path: "./dist/axios.min.js", threshold: "5kB" }],
-      dependencies: { "follow-redirects": "1.5.10", "is-buffer": "^2.0.2" },
-      deprecated: false,
+      name: "axios",
+      version: "0.19.0",
       description: "Promise based HTTP client for the browser and node.js",
+      main: "index.js",
+      scripts: {
+        test: "grunt test && bundlesize",
+        start: "node ./sandbox/server.js",
+        build: "NODE_ENV=production grunt build",
+        preversion: "npm test",
+        version:
+          "npm run build && grunt version && git add -A dist && git add CHANGELOG.md bower.json package.json",
+        postversion: "git push && git push --tags",
+        examples: "node ./examples/server.js",
+        coveralls:
+          "cat coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+        fix: "eslint --fix lib/**/*.js"
+      },
+      repository: { type: "git", url: "https://github.com/axios/axios.git" },
+      keywords: ["xhr", "http", "ajax", "promise", "node"],
+      author: "Matt Zabriskie",
+      license: "MIT",
+      bugs: { url: "https://github.com/axios/axios/issues" },
+      homepage: "https://github.com/axios/axios",
       devDependencies: {
         bundlesize: "^0.17.0",
         coveralls: "^3.0.0",
@@ -3743,30 +3784,10 @@ module.exports = (function(e, t) {
         webpack: "^1.13.1",
         "webpack-dev-server": "^1.14.1"
       },
-      homepage: "https://github.com/axios/axios",
-      keywords: ["xhr", "http", "ajax", "promise", "node"],
-      license: "MIT",
-      main: "index.js",
-      name: "axios",
-      repository: {
-        type: "git",
-        url: "git+https://github.com/axios/axios.git"
-      },
-      scripts: {
-        build: "NODE_ENV=production grunt build",
-        coveralls:
-          "cat coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
-        examples: "node ./examples/server.js",
-        fix: "eslint --fix lib/**/*.js",
-        postversion: "git push && git push --tags",
-        preversion: "npm test",
-        start: "node ./sandbox/server.js",
-        test: "grunt test && bundlesize",
-        version:
-          "npm run build && grunt version && git add -A dist && git add CHANGELOG.md bower.json package.json"
-      },
+      browser: { "./lib/adapters/http.js": "./lib/adapters/xhr.js" },
       typings: "./index.d.ts",
-      version: "0.19.0"
+      dependencies: { "follow-redirects": "1.5.10", "is-buffer": "^2.0.2" },
+      bundlesize: [{ path: "./dist/axios.min.js", threshold: "5kB" }]
     };
   },
   363: function(e) {
@@ -4174,7 +4195,7 @@ module.exports = (function(e, t) {
         parse: parse
       });
     }
-    const o = "5.5.1";
+    const o = "6.0.3";
     const a = `octokit-endpoint.js/${o} ${i.getUserAgent()}`;
     const u = {
       method: "GET",
@@ -6254,6 +6275,25 @@ module.exports = (function(e, t) {
   614: function(e) {
     e.exports = require("events");
   },
+  619: function(e, t, r) {
+    "use strict";
+    Object.defineProperty(t, "__esModule", { value: true });
+    function _interopDefault(e) {
+      return e && typeof e === "object" && "default" in e ? e["default"] : e;
+    }
+    var n = _interopDefault(r(2));
+    function getUserAgent() {
+      try {
+        return `Node.js/${process.version.substr(1)} (${n()}; ${process.arch})`;
+      } catch (e) {
+        if (/wmic os get Caption/.test(e.message)) {
+          return "Windows <version undetectable>";
+        }
+        throw e;
+      }
+    }
+    t.getUserAgent = getUserAgent;
+  },
   621: function(e, t, r) {
     "use strict";
     const n = r(622);
@@ -6900,13 +6940,13 @@ module.exports = (function(e, t) {
           var G = process.env[R] || process.env[R.toUpperCase()];
           if (G) {
             var F = c.parse(G);
-            var B = process.env.no_proxy || process.env.NO_PROXY;
-            var D = true;
-            if (B) {
-              var L = B.split(",").map(function trim(e) {
+            var D = process.env.no_proxy || process.env.NO_PROXY;
+            var B = true;
+            if (D) {
+              var L = D.split(",").map(function trim(e) {
                 return e.trim();
               });
-              D = !L.some(function proxyMatch(e) {
+              B = !L.some(function proxyMatch(e) {
                 if (!e) {
                   return false;
                 }
@@ -6923,7 +6963,7 @@ module.exports = (function(e, t) {
                 return T.hostname === e;
               });
             }
-            if (D) {
+            if (B) {
               A = { host: F.hostname, port: F.port };
               if (F.auth) {
                 var U = F.auth.split(":");
@@ -13127,8 +13167,8 @@ module.exports = (function(e, t) {
     var i = r(796);
     var s = _interopDefault(r(696));
     var o = _interopDefault(r(454));
-    var a = r(463);
-    const u = "5.3.1";
+    var a = r(257);
+    const u = "5.4.5";
     function getBufferResponse(e) {
       return e.arrayBuffer();
     }
@@ -13632,7 +13672,7 @@ module.exports = (function(e, t) {
         if (/wmic os get Caption/.test(e.message)) {
           return "Windows <version undetectable>";
         }
-        throw e;
+        return "<environment undetectable>";
       }
     }
     t.getUserAgent = getUserAgent;

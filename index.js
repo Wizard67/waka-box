@@ -29,11 +29,7 @@ async function updateGist(stats) {
 
   const { percent, currentYear } = getDateInfo(new Date());
 
-  lines.push(
-    ["🕓", currentYear, generateBarChart(percent, 28), currentYear + 1].join(
-      " "
-    )
-  );
+  lines.push(["🕓", generateBarChart(percent, 22), currentYear + 1].join(" "));
 
   lines.push("");
 
