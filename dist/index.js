@@ -871,7 +871,10 @@ module.exports = (function(e, t) {
         const { name: i, percent: s, text: o } = n;
         const a = [
           i.padEnd(11),
-          o.padEnd(14),
+          o
+            .replace(/hrs?/g, "h")
+            .replace(/mins?/g, "m")
+            .padEnd(9),
           generateBarChart(s, 21),
           String(s.toFixed(1)).padStart(5) + "%"
         ];
